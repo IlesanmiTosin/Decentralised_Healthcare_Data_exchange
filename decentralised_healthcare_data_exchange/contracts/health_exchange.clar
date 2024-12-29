@@ -166,3 +166,62 @@
           (try! (mint-research-tokens u5))
           (try! (mint-research-tokens u10)))
       (ok true))))
+
+
+;; Owner-only function to withdraw tokens
+(define-public (withdraw-tokens (amount uint))
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (ft-transfer? data-token amount contract-owner tx-sender)))
+
+
+;; Submit Research Proposal
+(define-public (submit-research-proposal
+  (proposal-id uint)
+  (research-title (string-ascii 100))
+  (description (string-ascii 500))
+  (required-fields (list 10 (string-ascii 50)))
+  (funding-requested uint)
+)
+  (begin
+    (map-set research-proposals 
+      { researcher: tx-sender, proposal-id: proposal-id }
+      {
+        research-title: research-title,
+        description: description,
+        required-fields: required-fields,
+        approved: false,
+        funding-requested: funding-requested
+      })
+    (ok true)))
+
+;; Approve Research Proposal (Owner Only)
+(define-public (approve-research-proposal (researcher principal) (proposal-id uint))
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (map-set research-proposals 
+      { researcher: researcher, proposal-id: proposal-id }
+      (merge 
+        (unwrap-panic (map-get? research-proposals { researcher: researcher, proposal-id: proposal-id }))
+        { approved: true }))
+    (ok true)))
+
+;; Log Detailed Access
+(define-public (log-data-access 
+  (patient principal)
+  (provider principal)
+  (accessed-fields (list 10 (string-ascii 50)))
+  (access-purpose (string-ascii 100))
+)
+  (begin
+    (map-set access-logs 
+      { 
+        patient: patient, 
+        provider: provider, 
+        access-timestamp: block-height 
+      }
+      {
+        accessed-fields: accessed-fields,
+        access-purpose: access-purpose
+      })
+    (ok true)))
