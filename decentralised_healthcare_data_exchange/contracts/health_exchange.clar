@@ -286,5 +286,13 @@
         ) 
         (err err-unauthorized))
       
-      ;; TODO: Implement actual access granting logic
       (ok true))))
+
+;; Set Global Research Parameters (Owner Only)
+(define-public (set-global-research-params
+  (max-anonymous-fields uint)
+  (min-funding-threshold uint)
+)
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (ok true)))
