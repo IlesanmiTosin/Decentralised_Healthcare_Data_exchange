@@ -89,3 +89,35 @@
   (match (map-get? provider-credentials { provider: provider })
     credentials (ok (get verification-status credentials))
     (err err-not-found)))
+    
+
+;; Public Functions
+;; Store patient data
+(define-public (store-advanced-data 
+  (data-hash (buff 32))
+  (data-type (string-ascii 50))
+  (sensitivity-level uint)
+)
+  (begin
+    ;; Check if data already exists
+    (asserts! (is-none (map-get? patient-data { patient: tx-sender })) (err err-data-exists))
+    
+    ;; Store data with additional metadata
+    (ok (map-set patient-data 
+      { patient: tx-sender } 
+      { 
+        data-hash: data-hash, 
+        is-shared: false, 
+        consent-timestamp: block-height,
+        data-type: data-type,
+        sensitivity-level: sensitivity-level
+      }))))
+
+
+;; Grant access to a healthcare provider
+(define-public (grant-access (provider principal))
+  (ok (map-set access-permissions { patient: tx-sender, provider: provider } { can-access: true,  access-timestamp: block-height  })))
+
+;; Revoke access from a healthcare provider
+(define-public (revoke-access (provider principal))
+  (ok (map-set access-permissions { patient: tx-sender, provider: provider } { can-access: false,  access-timestamp: block-height  })))
