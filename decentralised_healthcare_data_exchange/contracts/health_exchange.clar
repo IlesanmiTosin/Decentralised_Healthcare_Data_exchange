@@ -69,3 +69,23 @@
 
 (define-private (mint-research-tokens (amount uint))
   (ft-mint? data-token amount tx-sender))
+
+;; Check if a provider has access to a patient's data
+(define-read-only (check-access (patient principal) (provider principal))
+  (default-to false (get can-access (map-get? access-permissions { patient: patient, provider: provider }))))
+
+;; Get patient data hash
+(define-read-only (get-patient-data (patient principal))
+  (match (map-get? patient-data { patient: patient })
+    data-info (ok (get data-hash data-info))
+    (err err-not-found)))
+
+;; Get Research Proposal Details
+(define-read-only (get-research-proposal (researcher principal) (proposal-id uint))
+  (map-get? research-proposals { researcher: researcher, proposal-id: proposal-id }))
+
+;; Get Provider Verification Status
+(define-read-only (check-provider-credentials (provider principal))
+  (match (map-get? provider-credentials { provider: provider })
+    credentials (ok (get verification-status credentials))
+    (err err-not-found)))
