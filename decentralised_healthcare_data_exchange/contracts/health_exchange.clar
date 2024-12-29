@@ -225,3 +225,66 @@
         access-purpose: access-purpose
       })
     (ok true)))
+
+;; Set Patient Consent Preferences
+(define-public (set-consent-preferences
+  (allow-anonymous-research bool)
+  (allow-identifiable-research bool)
+  (notify-on-access bool)
+)
+  (begin
+    (map-set patient-consent-preferences 
+      { patient: tx-sender }
+      {
+        allow-anonymous-research: allow-anonymous-research,
+        allow-identifiable-research: allow-identifiable-research,
+        notify-on-access: notify-on-access
+      })
+    (ok true)))
+
+;; Register Provider Credentials
+(define-public (register-provider-credentials
+  (institution (string-ascii 100))
+  (credential-hash (buff 32))
+)
+  (begin
+    (map-set provider-credentials
+      { provider: tx-sender }
+      {
+        institution: institution,
+        credential-hash: credential-hash,
+        verification-status: false
+      })
+    (ok true)))
+
+;; Verify Provider Credentials (Owner Only)
+(define-public (verify-provider-credentials (provider principal))
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (map-set provider-credentials
+      { provider: provider }
+      (merge 
+        (unwrap-panic (map-get? provider-credentials { provider: provider }))
+        { verification-status: true }))
+    (ok true)))
+
+;; Request Specific Data Access
+(define-public (request-data-access 
+  (patient principal)
+  (required-fields (list 10 (string-ascii 50)))
+  (access-purpose (string-ascii 100))
+)
+  (let ((consent-prefs (unwrap! 
+                         (map-get? patient-consent-preferences { patient: patient }) 
+                         (err err-not-found))))
+    (begin
+      ;; Check consent preferences
+      (asserts! 
+        (or 
+          (and (get allow-anonymous-research consent-prefs) (< (len required-fields) u3))
+          (get allow-identifiable-research consent-prefs)
+        ) 
+        (err err-unauthorized))
+      
+      ;; TODO: Implement actual access granting logic
+      (ok true))))
