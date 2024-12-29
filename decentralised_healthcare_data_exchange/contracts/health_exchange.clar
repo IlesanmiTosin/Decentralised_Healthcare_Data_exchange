@@ -58,3 +58,14 @@
   credential-hash: (buff 32),
   verification-status: bool
 })
+
+
+;; Fungible Token
+(define-fungible-token data-token u1000000000)
+
+;; Private Functions
+(define-private (is-contract-owner)
+  (is-eq tx-sender contract-owner))
+
+(define-private (mint-research-tokens (amount uint))
+  (ft-mint? data-token amount tx-sender))
