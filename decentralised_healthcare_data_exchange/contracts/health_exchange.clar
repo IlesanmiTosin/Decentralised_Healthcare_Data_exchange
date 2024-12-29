@@ -89,7 +89,7 @@
   (match (map-get? provider-credentials { provider: provider })
     credentials (ok (get verification-status credentials))
     (err err-not-found)))
-    
+
 
 ;; Public Functions
 ;; Store patient data
@@ -121,3 +121,48 @@
 ;; Revoke access from a healthcare provider
 (define-public (revoke-access (provider principal))
   (ok (map-set access-permissions { patient: tx-sender, provider: provider } { can-access: false,  access-timestamp: block-height  })))
+
+
+;; Share data with researchers
+(define-public (share-with-researchers)
+  (let ((current-data (unwrap! (map-get? patient-data { patient: tx-sender }) (err err-not-found))))
+    (begin
+      (map-set patient-data { 
+        patient: tx-sender } 
+        { data-hash: (get data-hash (unwrap-panic (map-get? patient-data { patient: tx-sender }))),
+        is-shared: true,
+          consent-timestamp: (get consent-timestamp current-data),
+          data-type: (get data-type current-data),
+          sensitivity-level: (get sensitivity-level current-data)})
+      (ok true))))
+
+ ;; Update patient data
+(define-public (update-data (new-data-hash (buff 32)))
+  (let ((current-data (unwrap! (map-get? patient-data { patient: tx-sender }) (err err-not-found))))
+    (ok (map-set patient-data 
+      { patient: tx-sender } 
+      { 
+        data-hash: new-data-hash, 
+        is-shared: (get is-shared current-data), 
+        consent-timestamp: block-height,
+        data-type: (get data-type current-data),
+        sensitivity-level: (get sensitivity-level current-data) 
+      }))))
+
+;; Record research contribution
+(define-public (record-research-contribution (researcher principal))
+  (let ((current-contribution (default-to { contribution-count: u0, last-contribution-timestamp: u0 } 
+                                (map-get? research-contributions { patient: tx-sender, researcher: researcher }))))
+    (begin
+      (map-set research-contributions 
+        { patient: tx-sender, researcher: researcher }
+        { 
+          contribution-count: (+ (get contribution-count current-contribution) u1),
+          last-contribution-timestamp: block-height 
+        })
+      
+      ;; Mint additional tokens for repeat contributions
+      (if (> (get contribution-count current-contribution) u0)
+          (try! (mint-research-tokens u5))
+          (try! (mint-research-tokens u10)))
+      (ok true))))
